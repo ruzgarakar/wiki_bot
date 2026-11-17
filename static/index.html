@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wiki Araştırma Asistanı</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--text:#1d2228;--muted:#6b7480;--border:#e3e6ea;
+  --accent:#3366cc;--accent-soft:#e8eefb;--ok:#1e8e5a;--err:#c0392b;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+:root[data-theme="dark"]{
+  --bg:#14171c;--panel:#1d2128;--text:#e6e9ee;--muted:#9aa3ae;--border:#2c323b;
+  --accent:#7aa2f7;--accent-soft:#232c3f;--ok:#4cc38a;--err:#ef6b5b;--shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+button{font:inherit;cursor:pointer}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--border);background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;overflow:auto}
+aside h3{margin:8px 0 0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.hist li{display:flex;align-items:center;border-radius:8px}
+.hist li:hover{background:var(--accent-soft)}
+.hist button.q{flex:1;text-align:left;background:none;border:0;color:var(--text);padding:6px 8px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist button.x{background:none;border:0;color:var(--muted);padding:4px 8px;visibility:hidden}
+.hist li:hover button.x{visibility:visible}
+.btn{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{padding:24px 16px 200px;max-width:900px;width:100%;margin:0 auto}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.logo{font-weight:700;font-size:20px;display:flex;align-items:center;gap:8px}
+.logo span{font-family:Georgia,serif;font-size:26px}
+.hero{text-align:center;margin:8vh 0 24px}
+.hero h1{font-family:Georgia,serif;font-weight:500;font-size:clamp(28px,5vw,40px);margin:0 0 8px}
+.hero p{color:var(--muted);margin:0}
+.searchbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:10px}
+.searchbox textarea{width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--text);font:inherit;font-size:17px;padding:6px 8px;min-height:52px;max-height:200px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls select{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:6px 8px;font-size:14px}
+.controls .spacer{flex:1}
+.icon-btn{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:6px 10px;font-size:15px}
+.icon-btn.rec{background:var(--err);color:#fff;border-color:var(--err)}
+.examples{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.chip{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:999px;padding:6px 12px;font-size:14px}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.turn{margin-top:28px}
+.question{font-family:Georgia,serif;font-size:24px;margin:0 0 12px}
+.progress{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:14px;color:var(--muted)}
+.progress summary{cursor:pointer;color:var(--text);font-weight:600}
+.progress ol{margin:8px 0 0;padding-left:20px}
+.progress li{margin:3px 0}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sources{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:14px 0}
+.src{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px;text-decoration:none;color:var(--text);min-width:0}
+.src:hover{border-color:var(--accent)}
+.src img,.src .ph{width:44px;height:44px;border-radius:6px;object-fit:cover;flex:none;background:var(--accent-soft);display:grid;place-items:center;font-family:Georgia,serif;color:var(--accent)}
+.src b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src div{min-width:0}
+.answer{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:6px 22px;box-shadow:var(--shadow)}
+.answer h2{font-size:20px;margin-top:20px}.answer h3{font-size:17px}
+.answer code{background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.answer blockquote{border-left:3px solid var(--accent);margin:0;padding-left:12px;color:var(--muted)}
+.answer table{border-collapse:collapse}.answer td,.answer th{border:1px solid var(--border);padding:4px 8px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.related{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.related span{color:var(--muted);font-size:14px}
+.error{color:var(--err);background:var(--panel);border:1px solid var(--err);border-radius:10px;padding:10px 14px}
+.dock{position:fixed;bottom:0;left:260px;right:0;padding:12px 16px 16px;background:linear-gradient(transparent,var(--bg) 30%)}
+.dock .searchbox{max-width:868px;margin:0 auto}
+.hidden{display:none!important}
+.banner{background:#fff4d6;color:#6b4e00;border:1px solid #f0d58a;border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:12px}
+:root[data-theme="dark"] .banner{background:#3a3220;color:#f3dc9b;border-color:#6b5a2c}
+.menu-btn{display:none}
+@media (max-width:800px){
+  .layout{grid-template-columns:1fr}
+  aside{position:fixed;inset:0 30% 0 0;z-index:20;transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow)}
+  aside.open{transform:none}
+  .dock{left:0}
+  .menu-btn{display:inline-block}
+}
+@media print{aside,.dock,.actions,.related,header.top{display:none!important}.layout{display:block}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar">
+    <button class="btn primary" id="newBtn">＋ Yeni araştırma</button>
+    <h3>Geçmiş</h3>
+    <ul class="hist" id="hist"></ul>
+    <button class="btn" id="clearHist" style="margin-top:auto">Geçmişi temizle</button>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menü">☰</button>
+        <div class="logo"><span>W</span> Wiki Araştırma Asistanı</div>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Tema değiştir">🌓</button>
+    </header>
+
+    <div id="keyBanner" class="banner hidden">
+      ⚠️ Dil modeli API anahtarı bulunamadı. <span id="keyLink"></span>Proje klasöründeki <code>.env</code> dosyasına
+      <code>LLM_API_KEY=...</code> satırını ekleyip sunucuyu yeniden başlatın.
+    </div>
+
+    <section id="welcome">
+      <div class="hero">
+        <h1>Merak ettiğin her şeyi sor</h1>
+        <p>Sorunu kendi cümlelerinle yaz — yapay zeka Wikipedia'da araştırıp senin için anlaşılır bir özet hazırlasın.</p>
+      </div>
+      <div id="heroBoxSlot"></div>
+      <div class="examples" id="examples"></div>
+    </section>
+
+    <section id="thread"></section>
+  </main>
+</div>
+
+<div class="dock hidden" id="dock"><div id="dockBoxSlot"></div></div>
+
+<template id="boxTpl">
+  <form class="searchbox" id="form">
+    <textarea id="q" rows="1" placeholder="Örn: Kara delikler neden ışığı bile yutuyor?" maxlength="2000"></textarea>
+    <div class="controls">
+      <select id="lang" title="Wikipedia dili">
+        <option value="tr">🇹🇷 Türkçe Wikipedia</option>
+        <option value="en">🇬🇧 English Wikipedia</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="ar">🇸🇦 العربية</option>
+        <option value="ru">🇷🇺 Русский</option>
+      </select>
+      <select id="detail" title="Ayrıntı düzeyi">
+        <option value="kisa">Kısa özet</option>
+        <option value="orta" selected>Orta</option>
+        <option value="detayli">Detaylı</option>
+      </select>
+      <span class="spacer"></span>
+      <button type="button" class="icon-btn" id="micBtn" title="Sesle sor">🎤</button>
+      <button type="submit" class="btn primary" id="askBtn">Ara 🔍</button>
+    </div>
+  </form>
+</template>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch{ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// ---------- Tema ----------
+const applyTheme = t => document.documentElement.dataset.theme = t;
+applyTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+$("#themeBtn").onclick = () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(t); store.set("theme", t);
+};
+
+// ---------- Arama kutusu (başta ortada, sonra altta) ----------
+$("#heroBoxSlot").appendChild($("#boxTpl").content.cloneNode(true));
+const form = $("#form"), qEl = $("#q");
+$("#lang").value = store.get("lang", "tr");
+$("#detail").value = store.get("detail", "orta");
+$("#lang").onchange = e => { store.set("lang", e.target.value); loadExamples(); };
+$("#detail").onchange = e => store.set("detail", e.target.value);
+qEl.addEventListener("input", () => { qEl.style.height = "auto"; qEl.style.height = qEl.scrollHeight + "px"; });
+qEl.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
+form.onsubmit = e => { e.preventDefault(); ask(qEl.value); };
+
+function dockSearch(){
+  if (!$("#dockBoxSlot").contains(form)) { $("#dockBoxSlot").appendChild(form); $("#dock").classList.remove("hidden"); }
+  $("#welcome").classList.add("hidden");
+  qEl.placeholder = "Takip sorusu sor veya yeni bir konu yaz...";
+}
+function undockSearch(){
+  $("#heroBoxSlot").appendChild(form); $("#dock").classList.add("hidden");
+  $("#welcome").classList.remove("hidden");
+  qEl.placeholder = "Örn: Kara delikler neden ışığı bile yutuyor?";
+}
+
+// ---------- Örnek sorular ----------
+const EXAMPLES = {
+  tr: ["Osmanlı Devleti nasıl kuruldu?", "Fotosentez tam olarak nasıl çalışıyor?", "Yapay zeka ile makine öğrenmesi arasındaki fark ne?", "Mimar Sinan'ın en önemli eserleri hangileri?"],
+  en: ["How do black holes form?", "What caused the fall of the Roman Empire?", "How does CRISPR work?", "Who was Ada Lovelace?"]
+};
+async function loadExamples(){
+  const lang = $("#lang").value, box = $("#examples");
+  const ex = EXAMPLES[lang] || EXAMPLES.en;
+  box.innerHTML = ex.map(x => `<button class="chip" data-q="${esc(x)}">${esc(x)}</button>`).join("") +
+    `<button class="chip" id="randBtn">🎲 Rastgele konu</button>`;
+  box.querySelectorAll("[data-q]").forEach(b => b.onclick = () => ask(b.dataset.q));
+  $("#randBtn").onclick = async () => {
+    const r = await fetch(`/api/random?lang=${lang}`).then(r => r.json()).catch(() => []);
+    if (r.length) ask(lang === "tr" ? `${r[0]} hakkında bilgi ver` : `Tell me about ${r[0]}`);
+  };
+}
+loadExamples();
+
+// ---------- Sesli giriş ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) $("#micBtn").classList.add("hidden");
+else {
+  let rec = null;
+  $("#micBtn").onclick = () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR(); rec.lang = $("#lang").value === "tr" ? "tr-TR" : $("#lang").value; rec.interimResults = true;
+    rec.onresult = e => { qEl.value = [...e.results].map(r => r[0].transcript).join(""); qEl.dispatchEvent(new Event("input")); };
+    rec.onend = () => { rec = null; $("#micBtn").classList.remove("rec"); };
+    $("#micBtn").classList.add("rec"); rec.start();
+  };
+}
+
+// ---------- Geçmiş ----------
+let conversation = [];   // {question, answer, related, sources, lang}
+let currentId = null;
+function saveConversation(){
+  if (!conversation.length) return;
+  const hist = store.get("history", []).filter(h => h.id !== currentId);
+  hist.unshift({ id: currentId, title: conversation[0].question, turns: conversation, at: Date.now() });
+  store.set("history", hist.slice(0, 40)); renderHistory();
+}
+function renderHistory(){
+  const hist = store.get("history", []);
+  $("#hist").innerHTML = hist.length ? hist.map(h =>
+    `<li><button class="q" data-id="${h.id}" title="${esc(h.title)}">${esc(h.title)}</button><button class="x" data-del="${h.id}" title="Sil">✕</button></li>`
+  ).join("") : `<li style="color:var(--muted);font-size:14px;padding:6px 8px">Henüz araştırma yok</li>`;
+  $("#hist").querySelectorAll("[data-id]").forEach(b => b.onclick = () => openHistory(b.dataset.id));
+  $("#hist").querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    store.set("history", store.get("history", []).filter(h => h.id !== b.dataset.del));
+    if (currentId === b.dataset.del) newResearch(); renderHistory();
+  });
+}
+function openHistory(id){
+  const h = store.get("history", []).find(h => h.id === id); if (!h) return;
+  currentId = id; conversation = h.turns; $("#thread").innerHTML = "";
+  h.turns.forEach(t => { const el = addTurn(t.question); renderAnswer(el, t); });
+  dockSearch(); $("#sidebar").classList.remove("open"); scrollTo(0, 0);
+}
+function newResearch(){
+  conversation = []; currentId = null; $("#thread").innerHTML = ""; qEl.value = ""; undockSearch(); qEl.focus();
+  $("#sidebar").classList.remove("open");
+}
+$("#newBtn").onclick = newResearch;
+$("#clearHist").onclick = () => { if (confirm("Tüm geçmiş silinsin mi?")) { store.set("history", []); renderHistory(); } };
+$("#menuBtn").onclick = () => $("#sidebar").classList.toggle("open");
+renderHistory();
+
+// ---------- Soru sorma ----------
+let busy = false;
+function addTurn(question){
+  const el = document.createElement("div"); el.className = "turn";
+  el.innerHTML = `<h2 class="question">${esc(question)}</h2>
+    <details class="progress" open><summary><span class="spinner"></span><span class="ptitle">Araştırılıyor...</span></summary><ol></ol></details>
+    <div class="sources"></div><div class="body"></div>`;
+  $("#thread").appendChild(el); return el;
+}
+function step(el, html){ const li = document.createElement("li"); li.innerHTML = html; el.querySelector(".progress ol").appendChild(li); }
+
+async function ask(text){
+  const question = (text || "").trim();
+  if (!question || busy) return;
+  busy = true; $("#askBtn").disabled = true; qEl.value = ""; qEl.style.height = "auto";
+  if (!currentId) currentId = String(Date.now());
+  dockSearch();
+  const el = addTurn(question); el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const history = conversation.flatMap(t => [{ role: "user", content: t.question }, { role: "assistant", content: t.answer }]);
+  const lang = $("#lang").value;
+  let liveSources = [], done = false;
+
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, lang, detail: $("#detail").value, history })
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+    while (true) {
+      const { value, done: end } = await reader.read(); if (end) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === "status") el.querySelector(".ptitle").textContent = ev.message;
+        else if (ev.type === "search") step(el, `🔍 <b>"${esc(ev.query)}"</b> arandı <small>(${esc(ev.lang)})</small> — ${ev.results.length ? esc(ev.results.slice(0, 4).join(", ")) : "sonuç yok"}`);
+        else if (ev.type === "read") {
+          if (!ev.found) { step(el, `⚠️ "${esc(ev.title)}" bulunamadı`); continue; }
+          step(el, `📖 <a href="${esc(ev.url)}" target="_blank" rel="noopener">${esc(ev.title)}</a> ${ev.full ? "(tamamı)" : "(giriş)"} okundu`);
+          if (!liveSources.some(s => s.url === ev.url)) { liveSources.push(ev); renderSources(el, liveSources); }
+        }
+        else if (ev.type === "answer") {
+          const turn = { question, answer: ev.text, related: ev.related, sources: ev.sources, lang, steps: el.querySelector(".progress ol").innerHTML };
+          conversation.push(turn); saveConversation(); renderAnswer(el, turn); done = true;
+        }
+        else if (ev.type === "error") { showError(el, ev.message); done = true; }
+      }
+    }
+    if (!done) showError(el, "Bağlantı beklenmedik şekilde kesildi.");
+  } catch (err) { showError(el, "İstek başarısız: " + err.message); }
+  finally { busy = false; $("#askBtn").disabled = false; qEl.focus(); }
+}
+
+function renderSources(el, sources){
+  el.querySelector(".sources").innerHTML = sources.map(s => `
+    <a class="src" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.description || s.title)}">
+      ${s.thumbnail ? `<img src="${esc(s.thumbnail)}" alt="" loading="lazy">` : `<span class="ph">W</span>`}
+      <div><b>${esc(s.title)}</b><small>${esc(s.description || new URL(s.url).hostname)}</small></div>
+    </a>`).join("");
+}
+
+function finishProgress(el, count){
+  const p = el.querySelector(".progress"); p.open = false;
+  p.querySelector(".spinner")?.remove();
+  p.querySelector(".ptitle").textContent = `✓ ${count} makale incelendi — araştırma adımlarını göster`;
+}
+
+function renderAnswer(el, turn){
+  if (turn.steps && !el.querySelector(".progress ol").innerHTML) el.querySelector(".progress ol").innerHTML = turn.steps;
+  finishProgress(el, turn.sources.length);
+  renderSources(el, turn.sources);
+  // Metin içindeki [Makale Adı] atıflarını Wikipedia bağlantısına çevir
+  const linked = (turn.answer || "").replace(/\[([^\]\n]+)\](?!\()/g, (m, t) => {
+    const s = turn.sources.find(s => s.title.toLowerCase() === t.trim().toLowerCase());
+    return s ? `[${t}](${s.url})` : m;
+  });
+  const html = DOMPurify.sanitize(marked.parse(linked));
+  el.querySelector(".body").innerHTML = `
+    <div class="answer">${html}</div>
+    <div class="actions">
+      <button class="btn" data-a="copy">📋 Kopyala</button>
+      <button class="btn" data-a="md">⬇️ Markdown indir</button>
+      <button class="btn" data-a="print">🖨️ Yazdır / PDF</button>
+      <button class="btn" data-a="speak">🔊 Sesli oku</button>
+      <button class="btn" data-a="simpler">🧒 Daha basit anlat</button>
+      <button class="btn" data-a="deeper">🔬 Daha derine in</button>
+    </div>
+    ${turn.related?.length ? `<div class="related"><span>İlgili konular:</span>${turn.related.map(r => `<button class="chip" data-r="${esc(r)}">${esc(r)}</button>`).join("")}</div>` : ""}`;
+  el.querySelectorAll("[data-r]").forEach(b => b.onclick = () => ask(b.dataset.r));
+  el.querySelectorAll("[data-a]").forEach(b => b.onclick = () => action(b, b.dataset.a, turn, el));
+  el.querySelectorAll(".answer a").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+}
+
+function action(btn, a, turn, el){
+  const md = `# ${turn.question}\n\n${turn.answer}\n\n## Kaynaklar\n${turn.sources.map(s => `- [${s.title}](${s.url})`).join("\n")}\n`;
+  if (a === "copy") navigator.clipboard.writeText(md).then(() => { btn.textContent = "✓ Kopyalandı"; setTimeout(() => btn.textContent = "📋 Kopyala", 1500); });
+  if (a === "md") { const u = URL.createObjectURL(new Blob([md], { type: "text/markdown" })); Object.assign(document.createElement("a"), { href: u, download: turn.question.slice(0, 50).replace(/[^\p{L}\p{N} ]/gu, "").trim() + ".md" }).click(); URL.revokeObjectURL(u); }
+  if (a === "print") print();
+  if (a === "speak") {
+    if (speechSynthesis.speaking) { speechSynthesis.cancel(); btn.textContent = "🔊 Sesli oku"; return; }
+    const u = new SpeechSynthesisUtterance(el.querySelector(".answer").innerText);
+    u.lang = turn.lang === "tr" ? "tr-TR" : turn.lang; u.onend = () => btn.textContent = "🔊 Sesli oku";
+    speechSynthesis.speak(u); btn.textContent = "⏹ Durdur";
+  }
+  if (a === "simpler") ask("Bunu çok daha basit, bir çocuğa anlatır gibi açıklar mısın?");
+  if (a === "deeper") ask("Bu konuyu daha ayrıntılı anlat; önemli alt başlıkları ve az bilinen detayları da ekle.");
+}
+
+function showError(el, msg){
+  const p = el.querySelector(".progress"); p.querySelector(".spinner")?.remove();
+  p.querySelector(".ptitle").textContent = "Araştırma tamamlanamadı";
+  el.querySelector(".body").innerHTML = `<div class="error">⚠️ ${esc(msg)}</div>`;
+}
+
+// ---------- Sunucu durumu ----------
+fetch("/api/status").then(r => r.json()).then(s => {
+  if (!s.api_key) {
+    if (s.key_url) $("#keyLink").innerHTML = `Ücretsiz anahtarı <a href="${esc(s.key_url)}" target="_blank" rel="noopener">buradan</a> alın. `;
+    $("#keyBanner").classList.remove("hidden");
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>
